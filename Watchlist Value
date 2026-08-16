@@ -1,0 +1,422 @@
+import React, { useState, useEffect } from "react";
+
+// — Watchlist Value / Marge de sécurité —
+// Outil personnel. Pas un conseil en investissement.
+// Données pré-remplies = instantané ~20 juillet 2026, à ACTUALISER avant tout achat.
+
+const FONTS = `
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spectral:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap');
+.f-disp{font-family:'Fraunces',serif;}
+.f-body{font-family:'Spectral',serif;}
+.f-mono{font-family:'JetBrains Mono',monospace;font-feature-settings:'tnum';}
+`;
+
+const DEFAULTS = {
+  version: 13,
+  method: "multiple",
+  marge: 30,
+  r: 9,
+  rows: [
+    { id: 3,  nom: "Schneider Electric",    tk: "SU",    sec: "Électrification",           foss: false, cours: 278,   bpa: 9.5,  jper: 22, g: 8,  flag: true,  note: "Cœur électrification / datacenters. ⚠ Cours estimé 08/2026." },
+    { id: 4,  nom: "ASML",                  tk: "ASML",  sec: "Litho EUV",                 foss: false, cours: 1541,  bpa: 30,   jper: 28, g: 12, flag: true,  note: "T2 2026 record : BPA T2 = 7,59€. Guidance 43-45 Mds€. ⚠ Cours estimé 08/2026 (ref. 15/07)." },
+    { id: 5,  nom: "Sanofi",                tk: "SAN",   sec: "Pharma",                    foss: false, cours: 80,    bpa: 8.2,  jper: 13, g: 5,  flag: true,  note: "Inquiétudes dépendance Dupixent → pression cours. ⚠ Cours estimé 08/2026." },
+    { id: 6,  nom: "Allianz",               tk: "ALV",   sec: "Assurance",                 foss: false, cours: 416,   bpa: 30,   jper: 11, g: 5,  flag: false, note: "Q2 profit opérationnel record +11 %. Marché déçu non-vie → -1,6% le 07/08. Cours estimé 08/08/2026." },
+    { id: 7,  nom: "Munich Re",             tk: "MUV2",  sec: "Réassurance",               foss: false, cours: 591,   bpa: 50,   jper: 11, g: 5,  flag: false, note: "H1 2026 earnings call 07/08. Résultats solides, guidance prudente → -1,4% le 07/08. Cours estimé 08/08/2026." },
+    { id: 10, nom: "Novo Nordisk",          tk: "NOVO-B",sec: "Pharma / GLP-1",            foss: false, cours: 38,    bpa: 3.2,  jper: 18, g: 8,  flag: true,  note: "Pression continue sur la thèse GLP-1. Cours en DKK (Copenhague). ⚠ Cours estimé 08/2026." },
+    { id: 11, nom: "Smurfit WestRock",      tk: "SW",    sec: "Emballage carton",          foss: false, cours: 48.5,  bpa: 2.7,  jper: 13, g: 4,  flag: true,  note: "EN USD. +31% depuis juin. BPA NORMALISÉ — réel Q2 = 0,35$/trim (sous attentes). Prochain trim. estimé 0,67$. Résultats 04/11. Cours confirmé 05/08/2026." },
+    { id: 12, nom: "Legrand",               tk: "LR",    sec: "Infrastructure électrique", foss: false, cours: 170,   bpa: 5.5,  jper: 22, g: 6,  flag: true,  note: "Compounder (roll-up M&A, marge nette ~13%). ⚠ Cours estimé 08/2026." },
+    { id: 13, nom: "Veolia",                tk: "VIE",   sec: "Services environnement",    foss: false, cours: 34,    bpa: 2.7,  jper: 15, g: 7,  flag: true,  note: "70% contrats indexés inflation, rdt ~4,2%. ⚠ Cours estimé 08/2026." },
+    { id: 14, nom: "Michelin",              tk: "ML",    sec: "Pneumatiques",              foss: false, cours: 33,    bpa: 3.6,  jper: 10, g: 2,  flag: true,  note: "Cyclique, BPA normalisé mi-cycle. OE poids lourd déprimé. ⚠ Cours estimé 08/2026." },
+    { id: 15, nom: "Sword Group",           tk: "SWP",   sec: "Services IT (small cap)",   foss: false, cours: 31,    bpa: 2.0,  jper: 14, g: 4,  flag: true,  note: "Small/mid cap, rdt ~6,5% MAIS payout ~99% → soutenabilité à surveiller." },
+    { id: 16, nom: "EDP Renewables",        tk: "EDPR",  sec: "Renouvelables",             foss: false, cours: 13,    bpa: 0.43, jper: 18, g: 8,  flag: true,  note: "⚠ PER inadapté. Valoriser en EV/EBITDA ou NAV. Sensible aux taux + politique US. ⚠ Cours estimé 08/2026." },
+    { id: 18, nom: "NIBE Industrier",       tk: "NIBE",  sec: "Pompes à chaleur",          foss: false, cours: 3.361, bpa: 0.163, jper: 22, g: 8,  flag: false, note: "EN EUR (cotation Francfort NJB, cohérente avec Fortuneo). ✅ 100 actions achetées 20/07 — PRU réel 3,382 €/action. BPA normalisé converti ≈0,163 € (1,8 SEK / ~11,02 SEK pour 1 €). Q2 publié 21/08. ⚠ Les données Factset de l'appli courtier (PER 2,8, objectif 43 €, potentiel +1179%) sont incohérentes — probablement un mix de devises SEK/EUR non résolu, à ignorer." },
+    { id: 19, nom: "TOMRA Systems",         tk: "TOM",   sec: "Consignes / recyclage",     foss: false, cours: 99,    bpa: 3.7,  jper: 22, g: 8,  flag: true,  note: "EN NOK (Oslo). Moat consignes réel. ROIC ~9%, valo élevée. ⚠ Cours estimé 08/2026." },
+    { id: 20, nom: "Corticeira Amorim",     tk: "COR",   sec: "Liège (renouvelable)",      foss: false, cours: 7.0,   bpa: 0.42, jper: 14, g: 3,  flag: true,  note: "Leader mondial liège. ROIC ~7% (modeste). ⚠ Cours estimé 08/2026." },
+    { id: 21, nom: "Befesa",                tk: "BFSA",  sec: "Recyclage déchets danger.", foss: false, cours: 28,    bpa: 2.2,  jper: 12, g: 3,  flag: true,  note: "Économie circulaire (zinc/aluminium). Cyclique (prix métaux). ⚠ Cours estimé 08/2026." },
+    { id: 22, nom: "Verallia",              tk: "VRLA",  sec: "Verre recyclable",          foss: false, cours: 23,    bpa: 2.3,  jper: 12, g: 2,  flag: true,  note: "BPA NORMALISÉ (mi-cycle). Cyclique + endettée, rdt ~6%. ⚠ Cours estimé 08/2026." },
+    { id: 23, nom: "InPost (Mondial Relay)",tk: "INPST", sec: "Réseau consignes colis",   foss: false, opa: true, cours: 15.6, bpa: 0, jper: 0, g: 0, flag: false, note: "🔒 OPA FedEx + Advent à 15,60€ — période clôturée le 27/07/2026. Délistage probable H2 2026 si seuil 80% atteint. DOSSIER FERMÉ." },
+    { id: 25, nom: "Inditex",               tk: "ITX",   sec: "Retail premium (Zara)",     foss: false, cours: 54,    bpa: 2.2,  jper: 20, g: 9,  flag: true,  note: "ROE ~28%, tréso nette 11 Md€. Multiple plein. ⚠ Cours estimé 08/2026." },
+    { id: 26, nom: "Boliden",               tk: "BOL",   sec: "Mines cuivre/zinc",         foss: false, cours: 541,   bpa: 32,   jper: 11, g: 3,  flag: true,  note: "EN SEK (Stockholm). BPA NORMALISÉ (mi-cycle). Cuivre ~6$/lb (en baisse). ⚠ Cours estimé 08/2026 (ref. 02/07)." },
+    { id: 27, nom: "GEA Group",             tk: "G1A",   sec: "Équipement alimentaire/pharma",foss: false, cours: 63.4, bpa: 2.5,  jper: 18, g: 7,  flag: false, note: "ROCE 36-40%. 19 trimestres consécutifs croissance services. Q2 2026 bat les attentes. Cours confirmé 27/07/2026." },
+    { id: 28, nom: "Alfa Laval",            tk: "ALFA",  sec: "Échangeurs thermiques",     foss: false, cours: 558,   bpa: 20,   jper: 22, g: 8,  flag: false, note: "EN SEK (Stockholm). Q2 record : order intake +35%, carnet 53,5 Mds SEK. Bucket A. Cours confirmé 29/07/2026." },
+    { id: 29, nom: "Krones",                tk: "KRN",   sec: "Machines embouteillage",    foss: false, cours: 111,   bpa: 9.0,  jper: 14, g: 5,  flag: false, note: "Proche bas 52-sem (108-144€). Cible consensus 153€ (+38%). Plus actionnable du lot. Cours confirmé 02/08/2026." },
+    { id: 30, nom: "Andritz",               tk: "ANDR",  sec: "Hydro / papier / métallurgie",foss: false, cours: 80,   bpa: 4.0,  jper: 15, g: 7,  flag: false, note: "ROE 22,3%. Carnet record 12,6 Mds€. Hydro intake +81,8% H1. +8% post-Q2 30/07. Div. 2,60€ (23 ans). Cours estimé 08/08/2026." },
+    { id: 31, nom: "SAP",                   tk: "SAP",   sec: "Logiciel ERP / Cloud",      foss: false, cours: 180.14,bpa: 7.3,  jper: 21, g: 8,  flag: false, note: "Xetra, EUR. Cloud ERP mature, cash-generative, ESG-friendly (non-GAFAM). BPA consensus prochain exercice ~7,3€. Titre en repli -30/-40% depuis ATH (283€) mais partait de PER ~30x → cher malgré la correction. Cours confirmé 16/08/2026." },
+  ],
+};
+
+const KEY = "watchlist-value-v1";
+
+const fmt = (n, d = 2) =>
+  (n === null || n === undefined || !isFinite(n))
+    ? "—"
+    : Number(n).toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d });
+
+function compute(row, s) {
+  const cours = +row.cours || 0;
+  const bpa = +row.bpa || 0;
+  const per = bpa > 0 ? cours / bpa : null;
+  let vi = null;
+  if (s.method === "multiple") {
+    vi = bpa > 0 ? bpa * (+row.jper || 0) : null;
+  } else {
+    const g = (+row.g || 0) / 100;
+    const r = (+s.r || 0) / 100;
+    vi = bpa > 0 && r > g ? (bpa * (1 + g)) / (r - g) : null;
+  }
+  const cible = vi !== null ? vi * (1 - s.marge / 100) : null;
+  const buy = cible !== null && cours > 0 ? cours <= cible : false;
+  const ecart = cible !== null && cours > 0 ? ((cours - cible) / cours) * 100 : null; // % de baisse nécessaire
+  return { cours, bpa, per, vi, cible, buy, ecart };
+}
+
+export default function WatchlistValue() {
+  const [s, setS] = useState(DEFAULTS);
+  const [loaded, setLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshStatus, setRefreshStatus] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await window.storage.get(KEY);
+        if (res && res.value) {
+          const stored = JSON.parse(res.value);
+          if ((stored.version || 1) < DEFAULTS.version) {
+            const defaultByTk = Object.fromEntries(DEFAULTS.rows.map((r) => [r.tk, r]));
+            const defaultTks = new Set(DEFAULTS.rows.map((r) => r.tk));
+            // Mise à jour cours/bpa/note ; préserve jper et g (saisies utilisateur)
+            stored.rows = (stored.rows || [])
+              .filter((r) => defaultTks.has(r.tk)) // Retire les tickers supprimés (ex: Aurubis, L'Oréal, Air Liquide, TotalEnergies, Pernod Ricard, Alfen, Hermès)
+              .map((r) => {
+                const def = defaultByTk[r.tk];
+                if (!def) return r;
+                return { ...r, cours: def.cours, bpa: def.bpa, note: def.note, opa: def.opa || false, foss: def.foss };
+              });
+            // Ajoute les nouveaux tickers absents
+            const storedTks = new Set(stored.rows.map((r) => r.tk));
+            const toAdd = DEFAULTS.rows.filter((r) => !storedTks.has(r.tk));
+            stored.rows = [...stored.rows, ...toAdd];
+            stored.version = DEFAULTS.version;
+          }
+          setS(stored);
+        }
+      } catch (e) { /* clé absente : on garde les défauts */ }
+      setLoaded(true);
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    (async () => {
+      try { await window.storage.set(KEY, JSON.stringify(s)); } catch (e) {}
+    })();
+  }, [s, loaded]);
+
+  const setRow = (id, k, v) =>
+    setS((p) => ({ ...p, rows: p.rows.map((r) => (r.id === id ? { ...r, [k]: v } : r)) }));
+  const delRow = (id) => setS((p) => ({ ...p, rows: p.rows.filter((r) => r.id !== id) }));
+  const reset = () => setS(JSON.parse(JSON.stringify(DEFAULTS)));
+
+  // Currencies par ticker
+  const CURR = { ALFA:"SEK", BOL:"SEK", TOM:"NOK", SW:"USD" };
+
+  const refreshPrices = async () => {
+    setRefreshing(true);
+    setRefreshStatus("Connexion à l'API...");
+    const toRefresh = s.rows.filter(r => !r.opa && r.bpa > 0);
+    const batchSize = 8;
+    const batches = [];
+    for (let i = 0; i < toRefresh.length; i += batchSize) batches.push(toRefresh.slice(i, i + batchSize));
+    const priceMap = {};
+    let errors = 0;
+
+    for (let bi = 0; bi < batches.length; bi++) {
+      const batch = batches[bi];
+      setRefreshStatus(`Lot ${bi + 1}/${batches.length} — ${batch.map(r => r.tk).join(", ")}...`);
+      const tickerDesc = batch.map(r => `${r.nom} (${r.tk}, ${CURR[r.tk] || "EUR"})`).join("; ");
+      try {
+        const resp = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-6",
+            max_tokens: 500,
+            tools: [{ type: "web_search_20250305", name: "web_search" }],
+            messages: [{ role: "user", content:
+              `Search for today's current stock market price for each of: ${tickerDesc}.
+Return ONLY a valid JSON object: {"TICKER": price_as_number}.
+Use the currency specified in parentheses. No text, no markdown, ONLY JSON.` }]
+          })
+        });
+        if (!resp.ok) { errors++; continue; }
+        const data = await resp.json();
+        const texts = (data.content || []).filter(b => b.type === "text").map(b => b.text).reverse();
+        for (const txt of texts) {
+          const m = txt.match(/\{[\s\S]*?\}/);
+          if (m) { try { Object.assign(priceMap, JSON.parse(m[0])); break; } catch {} }
+        }
+      } catch { errors++; }
+      if (bi < batches.length - 1) await new Promise(r => setTimeout(r, 800));
+    }
+
+    const updated = Object.keys(priceMap).length;
+    if (updated > 0) {
+      setS(prev => ({
+        ...prev,
+        rows: prev.rows.map(row => {
+          if (row.opa) return row;
+          const p = priceMap[row.tk];
+          return (p && typeof p === "number" && p > 0) ? { ...row, cours: Math.round(p * 100) / 100 } : row;
+        })
+      }));
+      const now = new Date();
+      const ts = `${now.toLocaleDateString("fr-FR")} ${now.toLocaleTimeString("fr-FR", {hour:"2-digit",minute:"2-digit"})}`;
+      setRefreshStatus(`✓ ${updated} cours mis à jour — ${ts}${errors ? ` (${errors} erreur${errors>1?"s":""})` : ""}`);
+    } else {
+      setRefreshStatus(`⚠ Aucun cours récupéré${errors ? ` — ${errors} erreur(s)` : ""}`);
+    }
+    setRefreshing(false);
+  };
+
+  const C = {
+    ink: "#0e1014", panel: "#171a21", panel2: "#1e222b", line: "#2c313d",
+    text: "#e9e3d3", dim: "#9a9384", brass: "#c9a86a", brassDim: "#7c6a45",
+    buy: "#6fae7d", buyBg: "#16241a", wait: "#caa45f", red: "#b9685f",
+  };
+
+  const buys = loaded ? s.rows.filter((r) => compute(r, s).buy).length : 0;
+
+  const inputCls = "f-mono w-full text-right rounded px-2 py-1 outline-none";
+  const inputStyle = { background: C.ink, color: C.text, border: `1px solid ${C.line}` };
+
+  return (
+    <div className="f-body min-h-screen w-full" style={{ background: C.ink, color: C.text }}>
+      <style>{FONTS}</style>
+
+      <div className="max-w-3xl mx-auto px-4 py-7">
+        {/* En-tête */}
+        <header className="mb-6">
+          <div className="flex items-center gap-2 mb-1">
+            <span style={{ color: C.brass, letterSpacing: "0.25em" }} className="f-mono text-[10px] uppercase">
+              Carnet de l'investisseur · value
+            </span>
+          </div>
+          <h1 className="f-disp" style={{ fontWeight: 900, fontSize: "2.05rem", lineHeight: 1.05 }}>
+            Watchlist <span style={{ color: C.brass }}>marge de sécurité</span>
+          </h1>
+          <p className="mt-2 text-sm" style={{ color: C.dim }}>
+            On n'achète une « wonderful company » que lorsque le cours passe <em>sous</em> le prix-cible.
+            Tu fixes les hypothèses, l'outil calcule le signal.
+          </p>
+          <p className="mt-1 f-mono text-[11px]" style={{ color: C.brassDim }}>
+            Instantané ~4 juin 2026 · cours & BPA = estimations à actualiser · ⚠ = cours à vérifier
+          </p>
+        </header>
+
+        {/* Bandeau signal */}
+        <div className="rounded-lg px-4 py-3 mb-5 flex items-center justify-between"
+             style={{ background: buys > 0 ? C.buyBg : C.panel, border: `1px solid ${buys > 0 ? C.buy : C.line}` }}>
+          <span className="text-sm" style={{ color: buys > 0 ? C.buy : C.dim }}>
+            {buys > 0 ? "Signal d'achat actif" : "Aucun cours sous sa cible"}
+          </span>
+          <span className="f-mono text-lg" style={{ color: buys > 0 ? C.buy : C.dim }}>
+            {buys} / {s.rows.length}
+          </span>
+        </div>
+
+        {/* Réglages globaux */}
+        <div className="rounded-lg p-4 mb-6" style={{ background: C.panel, border: `1px solid ${C.line}` }}>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+            <div>
+              <div className="f-mono text-[10px] uppercase mb-1" style={{ color: C.dim, letterSpacing: "0.15em" }}>Méthode de valeur</div>
+              <div className="flex rounded overflow-hidden" style={{ border: `1px solid ${C.line}` }}>
+                {[["multiple", "Multiple juste"], ["dcf", "DCF simplifié"]].map(([v, l]) => (
+                  <button key={v} onClick={() => setS((p) => ({ ...p, method: v }))}
+                    className="px-3 py-1.5 text-xs f-mono"
+                    style={{ background: s.method === v ? C.brass : "transparent", color: s.method === v ? C.ink : C.dim }}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex-1 min-w-[180px]">
+              <div className="f-mono text-[10px] uppercase mb-1 flex justify-between" style={{ color: C.dim, letterSpacing: "0.15em" }}>
+                <span>Marge de sécurité</span><span style={{ color: C.brass }}>{s.marge} %</span>
+              </div>
+              <input type="range" min="0" max="50" value={s.marge}
+                onChange={(e) => setS((p) => ({ ...p, marge: +e.target.value }))}
+                className="w-full" style={{ accentColor: C.brass }} />
+            </div>
+
+            {s.method === "dcf" && (
+              <div className="flex-1 min-w-[180px]">
+                <div className="f-mono text-[10px] uppercase mb-1 flex justify-between" style={{ color: C.dim, letterSpacing: "0.15em" }}>
+                  <span>Rendement exigé (r)</span><span style={{ color: C.brass }}>{s.r} %</span>
+                </div>
+                <input type="range" min="6" max="15" step="0.5" value={s.r}
+                  onChange={(e) => setS((p) => ({ ...p, r: +e.target.value }))}
+                  className="w-full" style={{ accentColor: C.brass }} />
+              </div>
+            )}
+          </div>
+          <p className="mt-3 f-mono text-[11px]" style={{ color: C.brassDim }}>
+            {s.method === "multiple"
+              ? "Valeur = BPA normalisé × Juste PER.   Prix-cible = Valeur × (1 − marge)."
+              : "Valeur = BPA × (1+g) / (r − g)  [Gordon].   Prix-cible = Valeur × (1 − marge)."}
+          </p>
+        </div>
+
+        {!loaded && <p className="f-mono text-sm" style={{ color: C.dim }}>Chargement…</p>}
+
+        {/* Cartes */}
+        <div className="space-y-3">
+          {loaded && s.rows.map((row) => {
+            const c = compute(row, s);
+            return (
+              <div key={row.id} className="rounded-lg overflow-hidden"
+                   style={{ background: C.panel, border: `1px solid ${c.buy ? C.buy : C.line}` }}>
+                {/* En-tête carte */}
+                <div className="flex items-start justify-between px-4 pt-3.5 pb-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="f-disp" style={{ fontSize: "1.18rem", fontWeight: 600 }}>{row.nom}</span>
+                      {row.foss && (
+                        <span className="f-mono text-[9px] px-1.5 py-0.5 rounded"
+                              style={{ color: C.red, border: `1px solid ${C.red}` }}>⛔ FOSSILE</span>
+                      )}
+                      {row.opa && (
+                        <span className="f-mono text-[9px] px-1.5 py-0.5 rounded"
+                              style={{ color: "#a78bfa", border: "1px solid #a78bfa" }}>🔒 OPA EN COURS</span>
+                      )}
+                    </div>
+                    <div className="f-mono text-[11px] mt-0.5" style={{ color: C.dim }}>
+                      {row.tk} · {row.sec}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    {row.opa ? (
+                      <span className="f-mono text-[10px] px-2 py-1 rounded inline-block"
+                            style={{ color: "#a78bfa", border: "1px solid #a78bfa" }}>
+                        🔒 OFFRE 15,60 € · juil. 2026
+                      </span>
+                    ) : (
+                      <span className="f-mono text-[10px] px-2 py-1 rounded inline-block"
+                            style={{
+                              color: c.buy ? C.ink : C.wait,
+                              background: c.buy ? C.buy : "transparent",
+                              border: c.buy ? "none" : `1px solid ${C.wait}`,
+                            }}>
+                        {c.cible === null ? "—" : c.buy ? "✓ ACHETER" : `ATTENDRE −${fmt(c.ecart, 0)}%`}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Cours vs cible */}
+                <div className="grid grid-cols-3 gap-px mx-4 mb-3 rounded overflow-hidden" style={{ background: C.line }}>
+                  <Cell label="Cours" val={fmt(c.cours) + " €"} sub={row.flag ? "⚠ à vérifier" : ""} C={C} />
+                  <Cell label="Valeur intrinsèque" val={c.vi === null ? "—" : fmt(c.vi) + " €"} C={C} />
+                  <Cell label="Prix-cible d'achat" val={c.cible === null ? "—" : fmt(c.cible) + " €"} accent C={C} />
+                </div>
+
+                {/* Champs éditables */}
+                <div className="px-4 pb-3 grid gap-2"
+                     style={{ gridTemplateColumns: s.method === "dcf" ? "1fr 1fr 1fr 1fr" : "1fr 1fr 1fr" }}>
+                  <Field label="Cours €" v={row.cours} onChange={(v) => setRow(row.id, "cours", v)} cls={inputCls} st={inputStyle} C={C} />
+                  <Field label="BPA norm. €" v={row.bpa} onChange={(v) => setRow(row.id, "bpa", v)} cls={inputCls} st={inputStyle} C={C} />
+                  {s.method === "multiple"
+                    ? <Field label="Juste PER" v={row.jper} onChange={(v) => setRow(row.id, "jper", v)} cls={inputCls} st={inputStyle} C={C} />
+                    : <Field label="Croissance g %" v={row.g} onChange={(v) => setRow(row.id, "g", v)} cls={inputCls} st={inputStyle} C={C} />}
+                  {s.method === "dcf" &&
+                    <Field label="Juste PER" v={row.jper} onChange={(v) => setRow(row.id, "jper", v)} cls={inputCls} st={inputStyle} C={C} />}
+                </div>
+
+                {/* PER actuel + note */}
+                <div className="px-4 pb-3.5 flex items-start justify-between gap-3">
+                  <p className="text-[12.5px] italic flex-1" style={{ color: C.dim }}>{row.note}</p>
+                  <div className="text-right shrink-0">
+                    <div className="f-mono text-[10px] uppercase" style={{ color: C.dim, letterSpacing: "0.1em" }}>PER actuel</div>
+                    <div className="f-mono text-sm" style={{ color: c.per && c.per > row.jper ? C.wait : C.buy }}>
+                      {c.per === null ? "—" : fmt(c.per, 1) + "x"}
+                    </div>
+                  </div>
+                  <button onClick={() => delRow(row.id)} className="f-mono text-[11px] self-center"
+                          style={{ color: C.brassDim }} title="Retirer">✕</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Actions */}
+        <div className="mt-6 space-y-3">
+          {/* Bouton actualisation */}
+          <div className="rounded-lg px-4 py-3 flex items-center justify-between gap-3"
+               style={{ background: C.panel, border: `1px solid ${C.line}` }}>
+            <div className="flex-1 min-w-0">
+              <div className="f-mono text-[10px] uppercase mb-0.5" style={{ color: C.dim, letterSpacing: "0.12em" }}>
+                Cours en temps réel
+              </div>
+              <div className="f-mono text-[11px] truncate" style={{ color: refreshStatus.startsWith("✓") ? C.buy : refreshStatus.startsWith("⚠") ? C.wait : C.dim }}>
+                {refreshStatus || "Appuie pour récupérer les cours actuels via l'API"}
+              </div>
+            </div>
+            <button
+              onClick={refreshPrices}
+              disabled={refreshing || !loaded}
+              className="f-mono text-xs px-4 py-2 rounded shrink-0"
+              style={{
+                background: refreshing ? C.line : C.brass,
+                color: refreshing ? C.dim : C.ink,
+                opacity: refreshing ? 0.6 : 1,
+                cursor: refreshing ? "not-allowed" : "pointer",
+              }}>
+              {refreshing ? "⏳ En cours…" : "⟳ Actualiser"}
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <button onClick={() =>
+              setS((p) => ({ ...p, rows: [...p.rows, { id: Date.now(), nom: "Nouvelle ligne", tk: "—", sec: "—", foss: false, cours: 0, bpa: 0, jper: 15, g: 5, flag: true, note: "À compléter." }] }))}
+              className="f-mono text-xs px-3 py-2 rounded"
+              style={{ color: C.brass, border: `1px solid ${C.brassDim}` }}>
+              + Ajouter une valeur
+            </button>
+            <button onClick={reset} className="f-mono text-xs px-3 py-2 rounded" style={{ color: C.dim }}>
+              Réinitialiser
+            </button>
+          </div>
+        </div>
+
+        <p className="mt-6 text-[11px] leading-relaxed" style={{ color: C.brassDim }}>
+          Outil personnel d'aide à la décision — pas un conseil en investissement. Le « Juste PER », la croissance,
+          le rendement exigé et la marge de sécurité sont <em>tes</em> hypothèses : c'est là que se joue toute la prudence.
+          Un cours bon marché sur une qualité qui s'érode (ROE/marges en baisse) reste un piège, pas une affaire.
+          Tes saisies sont enregistrées automatiquement.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function Cell({ label, val, sub, accent, C }) {
+  return (
+    <div className="px-3 py-2.5" style={{ background: C.panel2 }}>
+      <div className="f-mono text-[9px] uppercase mb-1" style={{ color: C.dim, letterSpacing: "0.12em" }}>{label}</div>
+      <div className="f-mono text-[15px]" style={{ color: accent ? C.brass : C.text }}>{val}</div>
+      {sub ? <div className="f-mono text-[9px] mt-0.5" style={{ color: C.wait }}>{sub}</div> : null}
+    </div>
+  );
+}
+
+function Field({ label, v, onChange, cls, st, C }) {
+  return (
+    <label className="block">
+      <span className="f-mono text-[9px] uppercase block mb-1" style={{ color: C.dim, letterSpacing: "0.1em" }}>{label}</span>
+      <input type="number" step="any" value={v} onChange={(e) => onChange(e.target.value === "" ? "" : +e.target.value)}
+             className={cls} style={st} />
+    </label>
+  );
+}
