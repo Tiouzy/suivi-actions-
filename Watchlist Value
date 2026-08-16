@@ -12,36 +12,36 @@ const FONTS = `
 `;
 
 const DEFAULTS = {
-  version: 13,
+  version: 14,
   method: "multiple",
   marge: 30,
   r: 9,
   rows: [
-    { id: 3,  nom: "Schneider Electric",    tk: "SU",    sec: "Électrification",           foss: false, cours: 278,   bpa: 9.5,  jper: 22, g: 8,  flag: true,  note: "Cœur électrification / datacenters. ⚠ Cours estimé 08/2026." },
-    { id: 4,  nom: "ASML",                  tk: "ASML",  sec: "Litho EUV",                 foss: false, cours: 1541,  bpa: 30,   jper: 28, g: 12, flag: true,  note: "T2 2026 record : BPA T2 = 7,59€. Guidance 43-45 Mds€. ⚠ Cours estimé 08/2026 (ref. 15/07)." },
-    { id: 5,  nom: "Sanofi",                tk: "SAN",   sec: "Pharma",                    foss: false, cours: 80,    bpa: 8.2,  jper: 13, g: 5,  flag: true,  note: "Inquiétudes dépendance Dupixent → pression cours. ⚠ Cours estimé 08/2026." },
-    { id: 6,  nom: "Allianz",               tk: "ALV",   sec: "Assurance",                 foss: false, cours: 416,   bpa: 30,   jper: 11, g: 5,  flag: false, note: "Q2 profit opérationnel record +11 %. Marché déçu non-vie → -1,6% le 07/08. Cours estimé 08/08/2026." },
-    { id: 7,  nom: "Munich Re",             tk: "MUV2",  sec: "Réassurance",               foss: false, cours: 591,   bpa: 50,   jper: 11, g: 5,  flag: false, note: "H1 2026 earnings call 07/08. Résultats solides, guidance prudente → -1,4% le 07/08. Cours estimé 08/08/2026." },
-    { id: 10, nom: "Novo Nordisk",          tk: "NOVO-B",sec: "Pharma / GLP-1",            foss: false, cours: 38,    bpa: 3.2,  jper: 18, g: 8,  flag: true,  note: "Pression continue sur la thèse GLP-1. Cours en DKK (Copenhague). ⚠ Cours estimé 08/2026." },
-    { id: 11, nom: "Smurfit WestRock",      tk: "SW",    sec: "Emballage carton",          foss: false, cours: 48.5,  bpa: 2.7,  jper: 13, g: 4,  flag: true,  note: "EN USD. +31% depuis juin. BPA NORMALISÉ — réel Q2 = 0,35$/trim (sous attentes). Prochain trim. estimé 0,67$. Résultats 04/11. Cours confirmé 05/08/2026." },
-    { id: 12, nom: "Legrand",               tk: "LR",    sec: "Infrastructure électrique", foss: false, cours: 170,   bpa: 5.5,  jper: 22, g: 6,  flag: true,  note: "Compounder (roll-up M&A, marge nette ~13%). ⚠ Cours estimé 08/2026." },
-    { id: 13, nom: "Veolia",                tk: "VIE",   sec: "Services environnement",    foss: false, cours: 34,    bpa: 2.7,  jper: 15, g: 7,  flag: true,  note: "70% contrats indexés inflation, rdt ~4,2%. ⚠ Cours estimé 08/2026." },
-    { id: 14, nom: "Michelin",              tk: "ML",    sec: "Pneumatiques",              foss: false, cours: 33,    bpa: 3.6,  jper: 10, g: 2,  flag: true,  note: "Cyclique, BPA normalisé mi-cycle. OE poids lourd déprimé. ⚠ Cours estimé 08/2026." },
-    { id: 15, nom: "Sword Group",           tk: "SWP",   sec: "Services IT (small cap)",   foss: false, cours: 31,    bpa: 2.0,  jper: 14, g: 4,  flag: true,  note: "Small/mid cap, rdt ~6,5% MAIS payout ~99% → soutenabilité à surveiller." },
-    { id: 16, nom: "EDP Renewables",        tk: "EDPR",  sec: "Renouvelables",             foss: false, cours: 13,    bpa: 0.43, jper: 18, g: 8,  flag: true,  note: "⚠ PER inadapté. Valoriser en EV/EBITDA ou NAV. Sensible aux taux + politique US. ⚠ Cours estimé 08/2026." },
-    { id: 18, nom: "NIBE Industrier",       tk: "NIBE",  sec: "Pompes à chaleur",          foss: false, cours: 3.361, bpa: 0.163, jper: 22, g: 8,  flag: false, note: "EN EUR (cotation Francfort NJB, cohérente avec Fortuneo). ✅ 100 actions achetées 20/07 — PRU réel 3,382 €/action. BPA normalisé converti ≈0,163 € (1,8 SEK / ~11,02 SEK pour 1 €). Q2 publié 21/08. ⚠ Les données Factset de l'appli courtier (PER 2,8, objectif 43 €, potentiel +1179%) sont incohérentes — probablement un mix de devises SEK/EUR non résolu, à ignorer." },
-    { id: 19, nom: "TOMRA Systems",         tk: "TOM",   sec: "Consignes / recyclage",     foss: false, cours: 99,    bpa: 3.7,  jper: 22, g: 8,  flag: true,  note: "EN NOK (Oslo). Moat consignes réel. ROIC ~9%, valo élevée. ⚠ Cours estimé 08/2026." },
-    { id: 20, nom: "Corticeira Amorim",     tk: "COR",   sec: "Liège (renouvelable)",      foss: false, cours: 7.0,   bpa: 0.42, jper: 14, g: 3,  flag: true,  note: "Leader mondial liège. ROIC ~7% (modeste). ⚠ Cours estimé 08/2026." },
-    { id: 21, nom: "Befesa",                tk: "BFSA",  sec: "Recyclage déchets danger.", foss: false, cours: 28,    bpa: 2.2,  jper: 12, g: 3,  flag: true,  note: "Économie circulaire (zinc/aluminium). Cyclique (prix métaux). ⚠ Cours estimé 08/2026." },
-    { id: 22, nom: "Verallia",              tk: "VRLA",  sec: "Verre recyclable",          foss: false, cours: 23,    bpa: 2.3,  jper: 12, g: 2,  flag: true,  note: "BPA NORMALISÉ (mi-cycle). Cyclique + endettée, rdt ~6%. ⚠ Cours estimé 08/2026." },
-    { id: 23, nom: "InPost (Mondial Relay)",tk: "INPST", sec: "Réseau consignes colis",   foss: false, opa: true, cours: 15.6, bpa: 0, jper: 0, g: 0, flag: false, note: "🔒 OPA FedEx + Advent à 15,60€ — période clôturée le 27/07/2026. Délistage probable H2 2026 si seuil 80% atteint. DOSSIER FERMÉ." },
-    { id: 25, nom: "Inditex",               tk: "ITX",   sec: "Retail premium (Zara)",     foss: false, cours: 54,    bpa: 2.2,  jper: 20, g: 9,  flag: true,  note: "ROE ~28%, tréso nette 11 Md€. Multiple plein. ⚠ Cours estimé 08/2026." },
-    { id: 26, nom: "Boliden",               tk: "BOL",   sec: "Mines cuivre/zinc",         foss: false, cours: 541,   bpa: 32,   jper: 11, g: 3,  flag: true,  note: "EN SEK (Stockholm). BPA NORMALISÉ (mi-cycle). Cuivre ~6$/lb (en baisse). ⚠ Cours estimé 08/2026 (ref. 02/07)." },
-    { id: 27, nom: "GEA Group",             tk: "G1A",   sec: "Équipement alimentaire/pharma",foss: false, cours: 63.4, bpa: 2.5,  jper: 18, g: 7,  flag: false, note: "ROCE 36-40%. 19 trimestres consécutifs croissance services. Q2 2026 bat les attentes. Cours confirmé 27/07/2026." },
-    { id: 28, nom: "Alfa Laval",            tk: "ALFA",  sec: "Échangeurs thermiques",     foss: false, cours: 558,   bpa: 20,   jper: 22, g: 8,  flag: false, note: "EN SEK (Stockholm). Q2 record : order intake +35%, carnet 53,5 Mds SEK. Bucket A. Cours confirmé 29/07/2026." },
-    { id: 29, nom: "Krones",                tk: "KRN",   sec: "Machines embouteillage",    foss: false, cours: 111,   bpa: 9.0,  jper: 14, g: 5,  flag: false, note: "Proche bas 52-sem (108-144€). Cible consensus 153€ (+38%). Plus actionnable du lot. Cours confirmé 02/08/2026." },
-    { id: 30, nom: "Andritz",               tk: "ANDR",  sec: "Hydro / papier / métallurgie",foss: false, cours: 80,   bpa: 4.0,  jper: 15, g: 7,  flag: false, note: "ROE 22,3%. Carnet record 12,6 Mds€. Hydro intake +81,8% H1. +8% post-Q2 30/07. Div. 2,60€ (23 ans). Cours estimé 08/08/2026." },
-    { id: 31, nom: "SAP",                   tk: "SAP",   sec: "Logiciel ERP / Cloud",      foss: false, cours: 180.14,bpa: 7.3,  jper: 21, g: 8,  flag: false, note: "Xetra, EUR. Cloud ERP mature, cash-generative, ESG-friendly (non-GAFAM). BPA consensus prochain exercice ~7,3€. Titre en repli -30/-40% depuis ATH (283€) mais partait de PER ~30x → cher malgré la correction. Cours confirmé 16/08/2026." },
+    { id: 3,  nom: "Schneider Electric",    tk: "SU",    sec: "Électrification", bucket: "A",           foss: false, cours: 278,   bpa: 9.5,  jper: 22, g: 8,  flag: true,  note: "Cœur électrification / datacenters. ⚠ Cours estimé 08/2026." },
+    { id: 4,  nom: "ASML",                  tk: "ASML",  sec: "Litho EUV", bucket: "A",                 foss: false, cours: 1541,  bpa: 30,   jper: 28, g: 12, flag: true,  note: "T2 2026 record : BPA T2 = 7,59€. Guidance 43-45 Mds€. ⚠ Cours estimé 08/2026 (ref. 15/07)." },
+    { id: 5,  nom: "Sanofi",                tk: "SAN",   sec: "Pharma", bucket: "B",                    foss: false, cours: 80,    bpa: 8.2,  jper: 13, g: 5,  flag: true,  note: "Inquiétudes dépendance Dupixent → pression cours. ⚠ Cours estimé 08/2026." },
+    { id: 6,  nom: "Allianz",               tk: "ALV",   sec: "Assurance", bucket: "B",                 foss: false, cours: 416,   bpa: 30,   jper: 11, g: 5,  flag: false, note: "Q2 profit opérationnel record +11 %. Marché déçu non-vie → -1,6% le 07/08. Cours estimé 08/08/2026." },
+    { id: 7,  nom: "Munich Re",             tk: "MUV2",  sec: "Réassurance", bucket: "B",               foss: false, cours: 591,   bpa: 50,   jper: 11, g: 5,  flag: false, note: "H1 2026 earnings call 07/08. Résultats solides, guidance prudente → -1,4% le 07/08. Cours estimé 08/08/2026." },
+    { id: 10, nom: "Novo Nordisk",          tk: "NOVO-B",sec: "Pharma / GLP-1", bucket: "C",            foss: false, cours: 38,    bpa: 3.2,  jper: 18, g: 8,  flag: true,  note: "Pression continue sur la thèse GLP-1. Cours en DKK (Copenhague). ⚠ Cours estimé 08/2026." },
+    { id: 11, nom: "Smurfit WestRock",      tk: "SW",    sec: "Emballage carton", bucket: "B",          foss: false, cours: 48.5,  bpa: 2.7,  jper: 13, g: 4,  flag: true,  note: "EN USD. +31% depuis juin. BPA NORMALISÉ — réel Q2 = 0,35$/trim (sous attentes). Prochain trim. estimé 0,67$. Résultats 04/11. Cours confirmé 05/08/2026." },
+    { id: 12, nom: "Legrand",               tk: "LR",    sec: "Infrastructure électrique", bucket: "A", foss: false, cours: 170,   bpa: 5.5,  jper: 22, g: 6,  flag: true,  note: "Compounder (roll-up M&A, marge nette ~13%). ⚠ Cours estimé 08/2026." },
+    { id: 13, nom: "Veolia",                tk: "VIE",   sec: "Services environnement", bucket: "B",    foss: false, cours: 34,    bpa: 2.7,  jper: 15, g: 7,  flag: true,  note: "70% contrats indexés inflation, rdt ~4,2%. ⚠ Cours estimé 08/2026." },
+    { id: 14, nom: "Michelin",              tk: "ML",    sec: "Pneumatiques", bucket: "B",              foss: false, cours: 33,    bpa: 3.6,  jper: 10, g: 2,  flag: true,  note: "Cyclique, BPA normalisé mi-cycle. OE poids lourd déprimé. ⚠ Cours estimé 08/2026." },
+    { id: 15, nom: "Sword Group",           tk: "SWP",   sec: "Services IT (small cap)", bucket: "C",   foss: false, cours: 31,    bpa: 2.0,  jper: 14, g: 4,  flag: true,  note: "Small/mid cap, rdt ~6,5% MAIS payout ~99% → soutenabilité à surveiller." },
+    { id: 16, nom: "EDP Renewables",        tk: "EDPR",  sec: "Renouvelables", bucket: "C",             foss: false, cours: 13,    bpa: 0.43, jper: 18, g: 8,  flag: true,  note: "⚠ PER inadapté. Valoriser en EV/EBITDA ou NAV. Sensible aux taux + politique US. ⚠ Cours estimé 08/2026." },
+    { id: 18, nom: "NIBE Industrier",       tk: "NIBE",  sec: "Pompes à chaleur", bucket: "C",          foss: false, cours: 3.361, bpa: 0.163, jper: 22, g: 8,  flag: false, note: "EN EUR (cotation Francfort NJB, cohérente avec Fortuneo). ✅ 100 actions achetées 20/07 — PRU réel 3,382 €/action. BPA normalisé converti ≈0,163 € (1,8 SEK / ~11,02 SEK pour 1 €). Q2 publié 21/08. ⚠ Les données Factset de l'appli courtier (PER 2,8, objectif 43 €, potentiel +1179%) sont incohérentes — probablement un mix de devises SEK/EUR non résolu, à ignorer." },
+    { id: 19, nom: "TOMRA Systems",         tk: "TOM",   sec: "Consignes / recyclage", bucket: "C",     foss: false, cours: 99,    bpa: 3.7,  jper: 22, g: 8,  flag: true,  note: "EN NOK (Oslo). Moat consignes réel. ROIC ~9%, valo élevée. ⚠ Cours estimé 08/2026." },
+    { id: 20, nom: "Corticeira Amorim",     tk: "COR",   sec: "Liège (renouvelable)", bucket: "C",      foss: false, cours: 7.0,   bpa: 0.42, jper: 14, g: 3,  flag: true,  note: "Leader mondial liège. ROIC ~7% (modeste). ⚠ Cours estimé 08/2026." },
+    { id: 21, nom: "Befesa",                tk: "BFSA",  sec: "Recyclage déchets danger.", bucket: "C", foss: false, cours: 28,    bpa: 2.2,  jper: 12, g: 3,  flag: true,  note: "Économie circulaire (zinc/aluminium). Cyclique (prix métaux). ⚠ Cours estimé 08/2026." },
+    { id: 22, nom: "Verallia",              tk: "VRLA",  sec: "Verre recyclable", bucket: "C",          foss: false, cours: 17.71, bpa: 2.3,  jper: 12, g: 2,  flag: false, note: "BPA NORMALISÉ (mi-cycle). Cyclique + endettée + restructuration en cours (fermetures sites), rdt ~6%. Cours dérivé du PER live 7,7x communiqué par l'utilisateur (16/08/2026) — à reconfirmer sur Fortuneo." },
+    { id: 23, nom: "InPost (Mondial Relay)",tk: "INPST", sec: "Réseau consignes colis", bucket: "—",   foss: false, opa: true, cours: 15.6, bpa: 0, jper: 0, g: 0, flag: false, note: "🔒 OPA FedEx + Advent à 15,60€ — période clôturée le 27/07/2026. Délistage probable H2 2026 si seuil 80% atteint. DOSSIER FERMÉ." },
+    { id: 25, nom: "Inditex",               tk: "ITX",   sec: "Retail premium (Zara)", bucket: "A",     foss: false, cours: 54,    bpa: 2.2,  jper: 20, g: 9,  flag: true,  note: "ROE ~28%, tréso nette 11 Md€. Multiple plein. ⚠ Cours estimé 08/2026." },
+    { id: 26, nom: "Boliden",               tk: "BOL",   sec: "Mines cuivre/zinc", bucket: "B",         foss: false, cours: 541,   bpa: 32,   jper: 11, g: 3,  flag: true,  note: "EN SEK (Stockholm). BPA NORMALISÉ (mi-cycle). Cuivre ~6$/lb (en baisse). ⚠ Cours estimé 08/2026 (ref. 02/07)." },
+    { id: 27, nom: "GEA Group",             tk: "G1A",   sec: "Équipement alimentaire/pharma", bucket: "B",foss: false, cours: 63.4, bpa: 2.5,  jper: 18, g: 7,  flag: false, note: "ROCE 36-40%. 19 trimestres consécutifs croissance services. Q2 2026 bat les attentes. Cours confirmé 27/07/2026." },
+    { id: 28, nom: "Alfa Laval",            tk: "ALFA",  sec: "Échangeurs thermiques", bucket: "A",     foss: false, cours: 558,   bpa: 20,   jper: 22, g: 8,  flag: false, note: "EN SEK (Stockholm). Q2 record : order intake +35%, carnet 53,5 Mds SEK. Bucket A. Cours confirmé 29/07/2026." },
+    { id: 29, nom: "Krones",                tk: "KRN",   sec: "Machines embouteillage", bucket: "B",    foss: false, cours: 111,   bpa: 9.0,  jper: 14, g: 5,  flag: false, note: "Proche bas 52-sem (108-144€). Cible consensus 153€ (+38%). Plus actionnable du lot. Cours confirmé 02/08/2026." },
+    { id: 30, nom: "Andritz",               tk: "ANDR",  sec: "Hydro / papier / métallurgie", bucket: "B",foss: false, cours: 80,   bpa: 4.0,  jper: 15, g: 7,  flag: false, note: "ROE 22,3%. Carnet record 12,6 Mds€. Hydro intake +81,8% H1. +8% post-Q2 30/07. Div. 2,60€ (23 ans). Cours estimé 08/08/2026." },
+    { id: 31, nom: "SAP",                   tk: "SAP",   sec: "Logiciel ERP / Cloud", bucket: "A",      foss: false, cours: 180.14,bpa: 7.3,  jper: 21, g: 8,  flag: false, note: "Xetra, EUR. Cloud ERP mature, cash-generative, ESG-friendly (non-GAFAM). BPA consensus prochain exercice ~7,3€. Titre en repli -30/-40% depuis ATH (283€) mais partait de PER ~30x → cher malgré la correction. Cours confirmé 16/08/2026." },
   ],
 };
 
@@ -91,7 +91,7 @@ export default function WatchlistValue() {
               .map((r) => {
                 const def = defaultByTk[r.tk];
                 if (!def) return r;
-                return { ...r, cours: def.cours, bpa: def.bpa, note: def.note, opa: def.opa || false, foss: def.foss };
+                return { ...r, cours: def.cours, bpa: def.bpa, note: def.note, opa: def.opa || false, foss: def.foss, bucket: def.bucket };
               });
             // Ajoute les nouveaux tickers absents
             const storedTks = new Set(stored.rows.map((r) => r.tk));
@@ -183,6 +183,13 @@ Use the currency specified in parentheses. No text, no markdown, ONLY JSON.` }]
     ink: "#0e1014", panel: "#171a21", panel2: "#1e222b", line: "#2c313d",
     text: "#e9e3d3", dim: "#9a9384", brass: "#c9a86a", brassDim: "#7c6a45",
     buy: "#6fae7d", buyBg: "#16241a", wait: "#caa45f", red: "#b9685f",
+  };
+
+  const BUCKET_COLOR = { A: "#7fb3d5", B: C.brass, C: C.wait };
+  const BUCKET_LABEL = {
+    A: "Bucket A — qualité exceptionnelle, chère (MoS 15–25%)",
+    B: "Bucket B — qualité solide à prix raisonnable (MoS 30%)",
+    C: "Bucket C — spéculatif / turnaround (MoS 30%+)",
   };
 
   const buys = loaded ? s.rows.filter((r) => compute(r, s).buy).length : 0;
@@ -291,8 +298,18 @@ Use the currency specified in parentheses. No text, no markdown, ONLY JSON.` }]
                               style={{ color: "#a78bfa", border: "1px solid #a78bfa" }}>🔒 OPA EN COURS</span>
                       )}
                     </div>
-                    <div className="f-mono text-[11px] mt-0.5" style={{ color: C.dim }}>
-                      {row.tk} · {row.sec}
+                    <div className="f-mono text-[11px] mt-0.5 flex items-center gap-1.5" style={{ color: C.dim }}>
+                      {row.bucket && row.bucket !== "—" && (
+                        <span className="f-mono text-[9px] px-1.5 py-0.5 rounded font-bold"
+                              style={{
+                                color: BUCKET_COLOR[row.bucket] || C.dim,
+                                border: `1px solid ${BUCKET_COLOR[row.bucket] || C.line}`,
+                              }}
+                              title={BUCKET_LABEL[row.bucket] || ""}>
+                          {row.bucket}
+                        </span>
+                      )}
+                      <span>{row.tk} · {row.sec}</span>
                     </div>
                   </div>
                   <div className="text-right">
