@@ -12,9 +12,10 @@ const FONTS = `
 `;
 
 const DEFAULTS = {
-  version: 14,
+  version: 16,
   method: "multiple",
-  marge: 30,
+  margeByBucket: { A: 20, B: 30, C: 35 },
+  margeDefault: 30,
   r: 9,
   rows: [
     { id: 3,  nom: "Schneider Electric",    tk: "SU",    sec: "Électrification", bucket: "A",           foss: false, cours: 278,   bpa: 9.5,  jper: 22, g: 8,  flag: true,  note: "Cœur électrification / datacenters. ⚠ Cours estimé 08/2026." },
@@ -52,22 +53,41 @@ const fmt = (n, d = 2) =>
     ? "—"
     : Number(n).toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d });
 
+function getMarge(row, s) {
+  if (row.margeOverride !== undefined && row.margeOverride !== null && row.margeOverride !== "") {
+    return +row.margeOverride;
+  }
+  if (row.bucket && s.margeByBucket && s.margeByBucket[row.bucket] !== undefined) {
+    return s.margeByBucket[row.bucket];
+  }
+  return s.margeDefault ?? 30;
+}
+
 function compute(row, s) {
   const cours = +row.cours || 0;
   const bpa = +row.bpa || 0;
   const per = bpa > 0 ? cours / bpa : null;
   let vi = null;
+  let unstable = false;
   if (s.method === "multiple") {
     vi = bpa > 0 ? bpa * (+row.jper || 0) : null;
   } else {
     const g = (+row.g || 0) / 100;
     const r = (+s.r || 0) / 100;
-    vi = bpa > 0 && r > g ? (bpa * (1 + g)) / (r - g) : null;
+    const spread = r - g;
+    if (bpa > 0 && spread >= 0.02) {
+      // Gordon Growth n'est fiable qu'avec une marge r−g suffisante (≥2 pts) ;
+      // en dessous, le dénominateur proche de 0 fait exploser la valeur (artefact, pas un signal réel).
+      vi = (bpa * (1 + g)) / spread;
+    } else {
+      unstable = bpa > 0 && spread < 0.02 && spread > 0;
+    }
   }
-  const cible = vi !== null ? vi * (1 - s.marge / 100) : null;
+  const marge = getMarge(row, s);
+  const cible = vi !== null ? vi * (1 - marge / 100) : null;
   const buy = cible !== null && cours > 0 ? cours <= cible : false;
   const ecart = cible !== null && cours > 0 ? ((cours - cible) / cours) * 100 : null; // % de baisse nécessaire
-  return { cours, bpa, per, vi, cible, buy, ecart };
+  return { cours, bpa, per, vi, cible, buy, ecart, marge, unstable };
 }
 
 export default function WatchlistValue() {
@@ -97,6 +117,14 @@ export default function WatchlistValue() {
             const storedTks = new Set(stored.rows.map((r) => r.tk));
             const toAdd = DEFAULTS.rows.filter((r) => !storedTks.has(r.tk));
             stored.rows = [...stored.rows, ...toAdd];
+            // Init marge par bucket si absente (migration depuis l'ancien "marge" global unique)
+            if (!stored.margeByBucket) {
+              const legacy = stored.marge; // ancien réglage global, s'il existait
+              stored.margeByBucket = legacy !== undefined
+                ? { A: legacy, B: legacy, C: legacy }
+                : { ...DEFAULTS.margeByBucket };
+            }
+            if (stored.margeDefault === undefined) stored.margeDefault = DEFAULTS.margeDefault;
             stored.version = DEFAULTS.version;
           }
           setS(stored);
@@ -248,13 +276,22 @@ Use the currency specified in parentheses. No text, no markdown, ONLY JSON.` }]
               </div>
             </div>
 
-            <div className="flex-1 min-w-[180px]">
-              <div className="f-mono text-[10px] uppercase mb-1 flex justify-between" style={{ color: C.dim, letterSpacing: "0.15em" }}>
-                <span>Marge de sécurité</span><span style={{ color: C.brass }}>{s.marge} %</span>
+            <div className="flex-1 min-w-[260px]">
+              <div className="f-mono text-[10px] uppercase mb-1.5" style={{ color: C.dim, letterSpacing: "0.15em" }}>
+                Marge de sécurité par bucket
               </div>
-              <input type="range" min="0" max="50" value={s.marge}
-                onChange={(e) => setS((p) => ({ ...p, marge: +e.target.value }))}
-                className="w-full" style={{ accentColor: C.brass }} />
+              <div className="grid grid-cols-3 gap-3">
+                {["A", "B", "C"].map((b) => (
+                  <div key={b}>
+                    <div className="f-mono text-[10px] mb-0.5 flex justify-between" style={{ color: BUCKET_COLOR[b] }}>
+                      <span>{b}</span><span>{s.margeByBucket[b]}%</span>
+                    </div>
+                    <input type="range" min="0" max="50" value={s.margeByBucket[b]}
+                      onChange={(e) => setS((p) => ({ ...p, margeByBucket: { ...p.margeByBucket, [b]: +e.target.value } }))}
+                      className="w-full" style={{ accentColor: BUCKET_COLOR[b] }} />
+                  </div>
+                ))}
+              </div>
             </div>
 
             {s.method === "dcf" && (
@@ -270,9 +307,14 @@ Use the currency specified in parentheses. No text, no markdown, ONLY JSON.` }]
           </div>
           <p className="mt-3 f-mono text-[11px]" style={{ color: C.brassDim }}>
             {s.method === "multiple"
-              ? "Valeur = BPA normalisé × Juste PER.   Prix-cible = Valeur × (1 − marge)."
-              : "Valeur = BPA × (1+g) / (r − g)  [Gordon].   Prix-cible = Valeur × (1 − marge)."}
+              ? "Valeur = BPA normalisé × Juste PER.   Prix-cible = Valeur × (1 − marge du bucket, ou override ligne)."
+              : "Valeur = BPA × (1+g) / (r − g)  [Gordon].   Prix-cible = Valeur × (1 − marge du bucket, ou override ligne)."}
           </p>
+          {s.method === "dcf" && (
+            <p className="mt-1.5 f-mono text-[10px]" style={{ color: C.wait }}>
+              ⚠ Le Gordon Growth Model devient instable (valeurs délirantes) quand r − g &lt; 2 pts. Les lignes concernées affichent "⚠ instable" plutôt qu'un chiffre trompeur.
+            </p>
+          )}
         </div>
 
         {!loaded && <p className="f-mono text-sm" style={{ color: C.dim }}>Chargement…</p>}
@@ -334,13 +376,13 @@ Use the currency specified in parentheses. No text, no markdown, ONLY JSON.` }]
                 {/* Cours vs cible */}
                 <div className="grid grid-cols-3 gap-px mx-4 mb-3 rounded overflow-hidden" style={{ background: C.line }}>
                   <Cell label="Cours" val={fmt(c.cours) + " €"} sub={row.flag ? "⚠ à vérifier" : ""} C={C} />
-                  <Cell label="Valeur intrinsèque" val={c.vi === null ? "—" : fmt(c.vi) + " €"} C={C} />
-                  <Cell label="Prix-cible d'achat" val={c.cible === null ? "—" : fmt(c.cible) + " €"} accent C={C} />
+                  <Cell label="Valeur intrinsèque" val={c.unstable ? "⚠ instable" : (c.vi === null ? "—" : fmt(c.vi) + " €")} sub={c.unstable ? "r−g < 2 pts" : ""} C={C} />
+                  <Cell label="Prix-cible d'achat" val={c.unstable ? "⚠ n/a" : (c.cible === null ? "—" : fmt(c.cible) + " €")} sub={c.unstable ? "modèle DCF non fiable ici" : (c.cible !== null ? `MoS ${fmt(c.marge, 0)}%${row.margeOverride !== undefined && row.margeOverride !== null && row.margeOverride !== "" ? " (override)" : ""}` : "")} accent C={C} />
                 </div>
 
                 {/* Champs éditables */}
                 <div className="px-4 pb-3 grid gap-2"
-                     style={{ gridTemplateColumns: s.method === "dcf" ? "1fr 1fr 1fr 1fr" : "1fr 1fr 1fr" }}>
+                     style={{ gridTemplateColumns: s.method === "dcf" ? "1fr 1fr 1fr 1fr 1fr" : "1fr 1fr 1fr 1fr" }}>
                   <Field label="Cours €" v={row.cours} onChange={(v) => setRow(row.id, "cours", v)} cls={inputCls} st={inputStyle} C={C} />
                   <Field label="BPA norm. €" v={row.bpa} onChange={(v) => setRow(row.id, "bpa", v)} cls={inputCls} st={inputStyle} C={C} />
                   {s.method === "multiple"
@@ -348,6 +390,7 @@ Use the currency specified in parentheses. No text, no markdown, ONLY JSON.` }]
                     : <Field label="Croissance g %" v={row.g} onChange={(v) => setRow(row.id, "g", v)} cls={inputCls} st={inputStyle} C={C} />}
                   {s.method === "dcf" &&
                     <Field label="Juste PER" v={row.jper} onChange={(v) => setRow(row.id, "jper", v)} cls={inputCls} st={inputStyle} C={C} />}
+                  <Field label="MoS override %" v={row.margeOverride ?? ""} onChange={(v) => setRow(row.id, "margeOverride", v)} cls={inputCls} st={inputStyle} C={C} placeholder="auto" />
                 </div>
 
                 {/* PER actuel + note */}
@@ -428,11 +471,12 @@ function Cell({ label, val, sub, accent, C }) {
   );
 }
 
-function Field({ label, v, onChange, cls, st, C }) {
+function Field({ label, v, onChange, cls, st, C, placeholder }) {
   return (
     <label className="block">
       <span className="f-mono text-[9px] uppercase block mb-1" style={{ color: C.dim, letterSpacing: "0.1em" }}>{label}</span>
-      <input type="number" step="any" value={v} onChange={(e) => onChange(e.target.value === "" ? "" : +e.target.value)}
+      <input type="number" step="any" value={v} placeholder={placeholder}
+             onChange={(e) => onChange(e.target.value === "" ? "" : +e.target.value)}
              className={cls} style={st} />
     </label>
   );
