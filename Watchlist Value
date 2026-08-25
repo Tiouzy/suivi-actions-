@@ -12,7 +12,7 @@ const FONTS = `
 `;
 
 const DEFAULTS = {
-  version: 16,
+  version: 17,
   method: "multiple",
   margeByBucket: { A: 20, B: 30, C: 35 },
   margeDefault: 30,
@@ -43,6 +43,8 @@ const DEFAULTS = {
     { id: 29, nom: "Krones",                tk: "KRN",   sec: "Machines embouteillage", bucket: "B",    foss: false, cours: 111,   bpa: 9.0,  jper: 14, g: 5,  flag: false, note: "Proche bas 52-sem (108-144€). Cible consensus 153€ (+38%). Plus actionnable du lot. Cours confirmé 02/08/2026." },
     { id: 30, nom: "Andritz",               tk: "ANDR",  sec: "Hydro / papier / métallurgie", bucket: "B",foss: false, cours: 80,   bpa: 4.0,  jper: 15, g: 7,  flag: false, note: "ROE 22,3%. Carnet record 12,6 Mds€. Hydro intake +81,8% H1. +8% post-Q2 30/07. Div. 2,60€ (23 ans). Cours estimé 08/08/2026." },
     { id: 31, nom: "SAP",                   tk: "SAP",   sec: "Logiciel ERP / Cloud", bucket: "A",      foss: false, cours: 180.14,bpa: 7.3,  jper: 21, g: 8,  flag: false, note: "Xetra, EUR. Cloud ERP mature, cash-generative, ESG-friendly (non-GAFAM). BPA consensus prochain exercice ~7,3€. Titre en repli -30/-40% depuis ATH (283€) mais partait de PER ~30x → cher malgré la correction. Cours confirmé 16/08/2026." },
+    { id: 32, nom: "Nexans",                tk: "NEX",   sec: "Câbles / électrification réseau", bucket: "B", foss: false, cours: 137.9, bpa: 7.45, jper: 16, g: 9,  flag: false, note: "France, PEA ✅. ROE 18,5%, RN record 352M€, marge EBITDA 7,9%. Carnet massif : ~1 Md€ RTE + 600M€ Enedis jusqu'en 2028. \"Seul pure player mondial de l'électrification\" (dixit DG). Recentrage stratégique : CA en repli volontaire (7,8 Mds€) mais rentabilité en hausse. Moins cher que Prysmian sur les multiples (PER ~17-18x vs ~25x). Résultats S1 le 29/07 (bons), prochains le 22/10. Cours confirmé 11/08/2026." },
+    { id: 33, nom: "Prysmian",              tk: "PRY",   sec: "Câbles / électrification réseau", bucket: "A", foss: false, cours: 128,   bpa: 5.05, jper: 20, g: 10, flag: true,  note: "Italie, PEA ✅. Leader mondial en volume. PER actuel ~25-26x, jugé \"valorisation excessive\" par un analyste (04/08). Digital Solutions (fibre/data centers) = 24% marge EBITDA, tailwind IA. Q2 record : EBITDA 730M€, guidance 2026 relevée à 2,85 Mds€. Prime de leader qui laisse peu de marge d'erreur — comparer à Nexans avant d'arbitrer. Cours confirmé 14/08/2026." },
   ],
 };
 
@@ -245,7 +247,7 @@ Use the currency specified in parentheses. No text, no markdown, ONLY JSON.` }]
             Tu fixes les hypothèses, l'outil calcule le signal.
           </p>
           <p className="mt-1 f-mono text-[11px]" style={{ color: C.brassDim }}>
-            Instantané ~4 juin 2026 · cours & BPA = estimations à actualiser · ⚠ = cours à vérifier
+            Instantané ~16 août 2026 · cours & BPA = estimations à actualiser · ⚠ = cours à vérifier
           </p>
         </header>
 
