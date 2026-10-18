@@ -28,4 +28,4 @@ jobs:
           git config user.name "suivi-pea-bot"
           git config user.email "actions@users.noreply.github.com"
           git add state/
-          git diff --cached --quiet || (git commit -m "Cours de la semaine" && git push)
+          git diff --cached --quiet || (git commit -m "Cours de la semaine" && git pull --rebase origin main && git push)
