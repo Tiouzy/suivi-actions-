@@ -35,17 +35,25 @@ def fetch_prices(lignes):
             fx_cache[(de, vers)] = float(h["Close"].dropna().iloc[-1])
         return fx_cache[(de, vers)]
 
-    prices, errors = {}, []
+    prices, stats, errors = {}, {}, []
     for l in lignes:
         if not l["actif"] or not l["yahoo"]:
             continue
         try:
-            h = yf.Ticker(l["yahoo"]).history(period="5d")
-            px = float(h["Close"].dropna().iloc[-1])
+            close = yf.Ticker(l["yahoo"]).history(period="1y")["Close"].dropna()
+            px = float(close.iloc[-1])
             prices[l["tk"]] = round(px * fx(l["devise_cote"], l["devise_watchlist"]), 4)
+            # ratios calculés dans la devise de cotation (l'effet de change est ignoré)
+            ref = lambda n: float(close.iloc[-1 - n]) if len(close) > n else None
+            pct = lambda a, b: (a - b) / b * 100 if b else None
+            stats[l["tk"]] = dict(
+                var_hebdo_pct=pct(px, ref(5)),
+                perf_1m_pct=pct(px, ref(21)),
+                vs_haut_52s_pct=pct(px, float(close.max())),
+            )
         except Exception as e:  # une valeur en échec ne bloque pas les autres
             errors.append(f"{l['tk']} ({type(e).__name__})")
-    return prices, errors
+    return prices, stats, errors
 
 
 # ------------------------------------------------------------ valorisation
@@ -59,7 +67,7 @@ def evaluer(l, cours, cfg):
     return dict(vi=vi, cible=cible, marge=marge, per=per, ecart_cible_pct=ecart)
 
 
-def analyser(cfg, prices, previous):
+def analyser(cfg, prices, stats):
     lignes_out, signaux = [], []
     for l in cfg["lignes"]:
         tk = l["tk"]
@@ -69,10 +77,11 @@ def analyser(cfg, prices, previous):
         if cours is None:
             continue
         ev = evaluer(l, cours, cfg)
-        prev = previous.get(tk)
-        var = (cours - prev) / prev * 100 if prev else None
+        st = stats.get(tk, {})
+        var = st.get("var_hebdo_pct")
         d = dict(tk=tk, nom=l["nom"], bucket=l["bucket"], cours=cours,
-                 var_hebdo_pct=var, **ev)
+                 var_hebdo_pct=var, perf_1m_pct=st.get("perf_1m_pct"),
+                 vs_haut_52s_pct=st.get("vs_haut_52s_pct"), **ev)
         lignes_out.append(d)
 
         if ev["cible"] and cours <= ev["cible"]:
@@ -98,13 +107,23 @@ def texte_brut(date_str, lignes, signaux, positions, errors):
     out = [f"Suivi PEA — {date_str}", ""]
     out.append("Signaux de la semaine :")
     out += [f"- {s}" for s in signaux] or ["- Rien à signaler."]
+    a = sorted((d for d in lignes if d["bucket"] == "A"),
+               key=lambda x: (x["ecart_cible_pct"] is None, x["ecart_cible_pct"] or 0))
+    if a:
+        f = lambda v: f"{v:+.1f} %" if v is not None else "—"
+        out += ["", "Bucket A — tes priorités (de la plus proche à la plus éloignée de la cible) :",
+                "(cours / cible / baisse nécessaire pour l'atteindre | semaine, 1 mois, vs plus haut 52 sem.)"]
+        for d in a:
+            out.append(f"- {d['nom']} : {d['cours']:g} / {d['cible']:.2f} / {f(d['ecart_cible_pct'])}"
+                       f" | {f(d['var_hebdo_pct'])}, {f(d['perf_1m_pct'])}, {f(d['vs_haut_52s_pct'])}")
     if positions:
         out += ["", "Tes positions :"]
         for p in positions:
             out.append(f"- {p['nom']} : {p['quantite']} titres, PRU {p['pru']:.3f}, "
                        f"cours {p['cours']:.3f} ({p['perf_pct']:+.1f} %), valeur ≈ {p['valeur']:.0f}")
-    out += ["", "Watchlist (cours / cible / écart pour atteindre la cible) :"]
-    for d in sorted(lignes, key=lambda x: (x["ecart_cible_pct"] is None, x["ecart_cible_pct"] or 0)):
+    out += ["", "Autres lignes B et C (cours / cible / écart pour atteindre la cible) :"]
+    for d in sorted((d for d in lignes if d["bucket"] != "A"),
+                    key=lambda x: (x["ecart_cible_pct"] is None, x["ecart_cible_pct"] or 0)):
         cible = f"{d['cible']:.2f}" if d["cible"] else "—"
         ecart = f"{d['ecart_cible_pct']:+.1f} %" if d["ecart_cible_pct"] is not None else "—"
         out.append(f"- [{d['bucket']}] {d['nom']} : {d['cours']:g} / {cible} / {ecart}")
@@ -125,13 +144,18 @@ SYSTEM_PROMPT = (
     "et pour donner les nouvelles de la semaine sur NIBE, sa seule position. N'affirme que ce "
     "que tes recherches confirment, indique la date des informations, et dis explicitement "
     "quand tu n'as rien trouvé.\n"
-    "Structure : 1) ce qui a bougé et pourquoi ; 2) l'écart avec ses cibles (ce qui s'approche, "
-    "ce qui s'éloigne) ; 3) NIBE : position, PRU, nouvelles ; 4) une ligne « à surveiller "
-    "cette semaine » (publications de résultats ou événements datés connus). "
+    "Les lignes du bucket A sont ses achats prioritaires : consacre-leur la plus grande partie du "
+    "mail, une à deux phrases par valeur (écart à la cible, tendance sur 1 mois, distance au plus "
+    "haut 52 semaines, et la raison du mouvement ou l'actualité marquante, trouvée par recherche). "
+    "Dis clairement quelles valeurs A s'éloignent ou se rapprochent de leur cible, sans les "
+    "présenter comme à acheter.\n"
+    "Structure : 1) bucket A, de la valeur la plus proche de sa cible à la plus éloignée ; "
+    "2) signaux sur les buckets B et C ; 3) NIBE : position, PRU, nouvelles ; 4) une ligne « à "
+    "surveiller cette semaine » (publications de résultats ou événements datés connus). "
     "Termine par la liste des sources (titre + URL).\n"
     "Tu ne donnes aucun conseil d'achat ou de vente et ne dis jamais « acheter », « vendre » "
     "ou « renforcer » : tu constates les faits et l'écart avec ses propres cibles. "
-    "400 mots maximum hors sources."
+    "500 mots maximum hors sources."
 )
 
 
@@ -192,11 +216,11 @@ def main():
     cfg = json.loads(CONFIG.read_text(encoding="utf-8"))
     previous = json.loads(STATE.read_text()) if STATE.exists() else {}
 
-    prices, errors = fetch_prices(cfg["lignes"])
+    prices, stats, errors = fetch_prices(cfg["lignes"])
     if not prices:
         sys.exit("Aucun cours récupéré : pas de mail envoyé.")
 
-    lignes, signaux, positions = analyser(cfg, prices, previous)
+    lignes, signaux, positions = analyser(cfg, prices, stats)
     date_str = date.today().strftime("%d/%m/%Y")
     detail = texte_brut(date_str, lignes, signaux, positions, errors)
     synth = synthese_claude(detail)
