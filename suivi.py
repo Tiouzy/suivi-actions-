@@ -167,6 +167,7 @@ def synthese_claude(donnees_texte):
     """Synthèse rédigée par Claude avec recherche web ; None si pas de clé ou erreur."""
     key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
+        print("ANTHROPIC_API_KEY absente ou vide : synthèse rédigée non générée.", file=sys.stderr)
         return None
     import anthropic
 
