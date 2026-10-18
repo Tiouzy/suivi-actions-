@@ -173,7 +173,7 @@ def synthese_claude(donnees_texte):
     import anthropic
 
     client = anthropic.Anthropic(api_key=key)
-    model = os.environ.get("CLAUDE_MODEL", "claude-sonnet-5-5")
+    model = os.environ.get("CLAUDE_MODEL", "claude-haiku-5-5")
     outils = [{"type": "web_search_20250305", "name": "web_search", "max_uses": 4}]
 
     def appel(tools):

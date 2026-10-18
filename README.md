@@ -4,7 +4,7 @@ Chaque dimanche soir, `suivi.py` :
 1. récupère les cours de `watchlist.json` (Yahoo Finance via `yfinance`) ;
 2. recalcule valeur intrinsèque et cible avec la méthode de la watchlist (BPA × PER juste, marge par bucket A/B/C) ;
 3. détecte les signaux (sous la cible, proche de la cible, forte variation hebdo, position vs PRU) ;
-4. fait rédiger la synthèse par Claude Sonnet 5.5 avec recherche web (pourquoi les valeurs ont bougé, nouvelles de NIBE ; si `ANTHROPIC_API_KEY` est défini), puis l'envoie par mail.
+4. fait rédiger la synthèse par Claude Haiku 5.5 avec recherche web (modèle modifiable via la variable d'environnement `CLAUDE_MODEL`) (pourquoi les valeurs ont bougé, nouvelles de NIBE ; si `ANTHROPIC_API_KEY` est défini), puis l'envoie par mail.
 
 Outil personnel, pas un conseil en investissement. Aucun ordre n'est passé.
 
