@@ -139,11 +139,12 @@ SYSTEM_PROMPT = (
     "Données : cours, cibles issues de SA méthode (BPA × PER juste, marge de sécurité par "
     "bucket), variations, positions. Ces chiffres sont la référence : ne les recalcule pas, "
     "n'en invente aucun.\n"
-    "Utilise la recherche web pour expliquer POURQUOI les lignes en signal ont bougé "
-    "(résultats, relèvement ou abaissement d'objectif, actualité sectorielle ou réglementaire) "
-    "et pour donner les nouvelles de la semaine sur NIBE, sa seule position. N'affirme que ce "
-    "que tes recherches confirment, indique la date des informations, et dis explicitement "
-    "quand tu n'as rien trouvé.\n"
+    "Utilise la recherche web UNIQUEMENT pour les valeurs listées dans la rubrique « Recherche "
+    "web autorisée » des données (une recherche par valeur, pas plus) : explique POURQUOI elles "
+    "ont bougé (résultats, objectif d'analyste, actualité) et donne les nouvelles de NIBE, sa "
+    "seule position. Pour toutes les autres valeurs, appuie-toi sur les seules données fournies, "
+    "sans recherche. N'affirme que ce que tes recherches confirment, indique la date des "
+    "informations, et dis explicitement quand tu n'as rien trouvé.\n"
     "Les lignes du bucket A sont ses achats prioritaires : consacre-leur la plus grande partie du "
     "mail, une à deux phrases par valeur (écart à la cible, tendance sur 1 mois, distance au plus "
     "haut 52 semaines, et la raison du mouvement ou l'actualité marquante, trouvée par recherche). "
@@ -173,7 +174,7 @@ def synthese_claude(donnees_texte):
 
     client = anthropic.Anthropic(api_key=key)
     model = os.environ.get("CLAUDE_MODEL", "claude-sonnet-5-5")
-    outils = [{"type": "web_search_20250305", "name": "web_search", "max_uses": 8}]
+    outils = [{"type": "web_search_20250305", "name": "web_search", "max_uses": 4}]
 
     def appel(tools):
         messages = [{"role": "user", "content": donnees_texte}]
@@ -224,7 +225,11 @@ def main():
     lignes, signaux, positions = analyser(cfg, prices, stats)
     date_str = date.today().strftime("%d/%m/%Y")
     detail = texte_brut(date_str, lignes, signaux, positions, errors)
-    synth = synthese_claude(detail)
+    proches_a = [d["nom"] for d in sorted(
+        (d for d in lignes if d["bucket"] == "A" and d["ecart_cible_pct"] is not None),
+        key=lambda x: x["ecart_cible_pct"])[:3]]
+    cibles_web = ["NIBE Industrier"] + proches_a
+    synth = synthese_claude(detail + "\n\nRecherche web autorisée : " + " ; ".join(cibles_web))
     corps = (synth + "\n\n---\n" + detail) if synth else detail
     sujet = f"Suivi PEA {date_str} — " + (f"{len(signaux)} signal(s)" if signaux else "RAS")
 
