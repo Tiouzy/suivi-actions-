@@ -114,28 +114,60 @@ def texte_brut(date_str, lignes, signaux, positions, errors):
     return "\n".join(out)
 
 
+SYSTEM_PROMPT = (
+    "Tu rédiges le mail hebdomadaire de suivi du PEA d'Aubin, en français, ton direct et "
+    "précis, comme un analyste qui s'adresse à un investisseur particulier.\n"
+    "Données : cours, cibles issues de SA méthode (BPA × PER juste, marge de sécurité par "
+    "bucket), variations, positions. Ces chiffres sont la référence : ne les recalcule pas, "
+    "n'en invente aucun.\n"
+    "Utilise la recherche web pour expliquer POURQUOI les lignes en signal ont bougé "
+    "(résultats, relèvement ou abaissement d'objectif, actualité sectorielle ou réglementaire) "
+    "et pour donner les nouvelles de la semaine sur NIBE, sa seule position. N'affirme que ce "
+    "que tes recherches confirment, indique la date des informations, et dis explicitement "
+    "quand tu n'as rien trouvé.\n"
+    "Structure : 1) ce qui a bougé et pourquoi ; 2) l'écart avec ses cibles (ce qui s'approche, "
+    "ce qui s'éloigne) ; 3) NIBE : position, PRU, nouvelles ; 4) une ligne « à surveiller "
+    "cette semaine » (publications de résultats ou événements datés connus). "
+    "Termine par la liste des sources (titre + URL).\n"
+    "Tu ne donnes aucun conseil d'achat ou de vente et ne dis jamais « acheter », « vendre » "
+    "ou « renforcer » : tu constates les faits et l'écart avec ses propres cibles. "
+    "400 mots maximum hors sources."
+)
+
+
+def _texte(msg):
+    return "".join(b.text for b in msg.content if b.type == "text").strip()
+
+
 def synthese_claude(donnees_texte):
-    """Synthèse rédigée par Claude ; retourne None si pas de clé ou en cas d'erreur."""
+    """Synthèse rédigée par Claude avec recherche web ; None si pas de clé ou erreur."""
     key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
         return None
-    try:
-        import anthropic
+    import anthropic
 
-        client = anthropic.Anthropic(api_key=key)
-        msg = client.messages.create(
-            model=os.environ.get("CLAUDE_MODEL", "claude-sonnet-5-5"),
-            max_tokens=900,
-            system=(
-                "Tu rédiges le mail hebdomadaire de suivi du PEA d'Aubin, en français, ton direct. "
-                "Appuie-toi UNIQUEMENT sur les données fournies (cours, cibles issues de SA méthode, "
-                "variations, positions). N'invente aucun chiffre ni aucune actualité. "
-                "Tu ne donnes aucun conseil d'achat ou de vente : tu constates l'écart avec ses propres "
-                "cibles et mets en avant ce qui a bougé. 200 mots maximum, puis rien d'autre."
-            ),
-            messages=[{"role": "user", "content": donnees_texte}],
-        )
-        return "".join(b.text for b in msg.content if b.type == "text").strip()
+    client = anthropic.Anthropic(api_key=key)
+    model = os.environ.get("CLAUDE_MODEL", "claude-sonnet-5-5")
+    outils = [{"type": "web_search_20250305", "name": "web_search", "max_uses": 8}]
+
+    def appel(tools):
+        messages = [{"role": "user", "content": donnees_texte}]
+        for _ in range(4):  # la recherche web peut interrompre le tour (pause_turn)
+            kwargs = dict(model=model, max_tokens=3000, system=SYSTEM_PROMPT, messages=messages)
+            if tools:
+                kwargs["tools"] = tools
+            msg = client.messages.create(**kwargs)
+            if msg.stop_reason != "pause_turn":
+                return _texte(msg)
+            messages = [messages[0], {"role": "assistant", "content": msg.content}]
+        return _texte(msg)
+
+    try:
+        return appel(outils)
+    except Exception as e:
+        print(f"Synthèse avec recherche web indisponible : {e}", file=sys.stderr)
+    try:  # repli : synthèse sans recherche web
+        return appel(None)
     except Exception as e:
         print(f"Synthèse Claude indisponible : {e}", file=sys.stderr)
         return None
