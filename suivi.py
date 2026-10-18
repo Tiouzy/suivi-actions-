@@ -183,19 +183,27 @@ def synthese_claude(donnees_texte):
             if tools:
                 kwargs["tools"] = tools
             msg = client.messages.create(**kwargs)
+            blocs = [getattr(b, "type", "?") for b in msg.content]
+            u = getattr(msg, "usage", None)
+            print(f"API {model} (web={bool(tools)}) : stop_reason={msg.stop_reason}, "
+                  f"blocs={blocs}, tokens in/out={getattr(u, 'input_tokens', '?')}/"
+                  f"{getattr(u, 'output_tokens', '?')}", file=sys.stderr)
             if msg.stop_reason != "pause_turn":
-                return _texte(msg)
+                break
             messages = [messages[0], {"role": "assistant", "content": msg.content}]
-        return _texte(msg)
+        texte = _texte(msg)
+        if not texte:
+            raise RuntimeError("réponse de l'API sans texte")
+        return texte
 
     try:
         return appel(outils)
     except Exception as e:
-        print(f"Synthèse avec recherche web indisponible : {e}", file=sys.stderr)
+        print(f"Synthèse avec recherche web indisponible : {type(e).__name__}: {e}", file=sys.stderr)
     try:  # repli : synthèse sans recherche web
         return appel(None)
     except Exception as e:
-        print(f"Synthèse Claude indisponible : {e}", file=sys.stderr)
+        print(f"Synthèse Claude indisponible : {type(e).__name__}: {e}", file=sys.stderr)
         return None
 
 
