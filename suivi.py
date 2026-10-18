@@ -179,7 +179,7 @@ def synthese_claude(donnees_texte):
     def appel(tools):
         messages = [{"role": "user", "content": donnees_texte}]
         for _ in range(4):  # la recherche web peut interrompre le tour (pause_turn)
-            kwargs = dict(model=model, max_tokens=3000, system=SYSTEM_PROMPT, messages=messages)
+            kwargs = dict(model=model, max_tokens=12000, system=SYSTEM_PROMPT, messages=messages)
             if tools:
                 kwargs["tools"] = tools
             msg = client.messages.create(**kwargs)
@@ -193,7 +193,7 @@ def synthese_claude(donnees_texte):
             messages = [messages[0], {"role": "assistant", "content": msg.content}]
         texte = _texte(msg)
         if not texte:
-            raise RuntimeError("réponse de l'API sans texte")
+            raise RuntimeError(f"réponse de l'API sans texte (stop_reason={msg.stop_reason})")
         return texte
 
     try:
